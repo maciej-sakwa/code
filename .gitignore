@@ -1,10 +1,11 @@
-\src\clustering_module.py
-\src\GPU_cross_correlation.py
-\src\ivi_trace.py
-\src\plotting.py
+src/clustering_module.py
+src/**/GPU_cross_correlation.py
+\src/ivi_trace.py
+\src/plotting.py
+
 
 
 \models
 \data
 \images_new
-
+\*.xlsx
