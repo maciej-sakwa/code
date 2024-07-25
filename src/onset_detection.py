@@ -99,5 +99,126 @@ def onset_detection_fun(signal_ar, #save=False,
     return signal_extracted, onset_picked, ds6
 
 
+class OnsetDetection():
+    def __init__(self, window_length=500, out_length=625, window_step=5, start_search=None, end_search=None, threshold=0.1, SNR=False, energy_gap=None) -> None:
+        
+        self.out_length = out_length
+        self.window_length = window_length
+
+        self.threshold = threshold
+
+        self.window_step = window_step
+        self.search_start = start_search
+        self.search_end = end_search
+        
+        # Fill the params if not set
+        if self.search_start is None:
+            self.search_start = window_length
+        if self.search_end is None:
+            self.search_end = self.search_start * 3
+
+        # Define the search range
+        self.search_range = range(self.search_start, self.search_end, self.window_step)    
+
+        # SNR picking
+        self.SNR = SNR
+        if SNR: 
+            if energy_gap is None: raise ValueError(f"With SNR picking energy gap cannot be set to {energy_gap}")
+            else: self.energy_gap = energy_gap
+
+
+    def _check_length(self, x):
+        self.input_length = len(x)
+        
+        if self.input_length <= self.out_length:
+            raise ValueError(f'Input length cannot be smaller then output length and is: \
+                             {self.input_length} and {self.out_length}')
+        
+        if self.input_length <= self.window_length:
+            raise ValueError(f'Input length cannot be smaller then the selected window size and is: \
+                             {self.input_length} and {self.window_length}')
+        
+        if self.input_length < self.search_end:
+            raise ValueError(f'Input length cannot be smaller then the searched area and is: \
+                             {self.input_length} and {self.search_end}')
+        
+        if self.input_length < self.search_end+self.out_length:
+            raise ValueError(f'Input length cannot be smaller sum of the searched area and out vector and is: \
+                             {self.input_length} and {self.search_end+self.out_length}')
+
+        return
+
+    def _calculate_moment_6(self, x, moment_1, moment_2):
+        
+        # Prealocation
+        moment_6 = []
+
+        # Loop through the windows in search range
+        for n, i in enumerate(self.search_range): 
+
+            # Get the waveform piece of the window
+            x_i = x[i-self.window_length:i]
+
+            # Calculate the fraction nom and denom
+            nom = np.sum((x_i - moment_1[n]) ** 6)
+            denom = ((self.window_length - 1) * (moment_2[n] ** 3))
+
+            if denom == 0:
+                print('Zero division, replaced denom with epsilon')
+                denom += 0.001
+
+
+            moment_6.append(nom/denom - 15)
+
+        return moment_6
+    
+
+    def _first_positive_index(self, x, threshold=0):
+        """Finds the first index above threshold"""
+
+        # Find where the values are positive
+        positive_indices = np.where(x > threshold)[0]
+        
+        # Check if there is any positive value (rahter not possible with the threshold definition)
+        if positive_indices.size == 0:
+            return None 
+        
+        # Return the index of the first positive value
+        return positive_indices[0]
+
+    def __call__(self, x):
+        
+        # Make sure the input is an array
+        x = np.asarray(x).astype(int)
+
+        # Check if the length is correct
+        self._check_length(x)
+
+        # Calculate statistical moments based on waveform pieces
+        moment_1 = [np.mean(x[i-self.window_length:i], dtype=float) for i in self.search_range]
+        moment_2 = [np.var(x[i-self.window_length:i], dtype=float) for i in self.search_range]
+        moment_6 = self._calculate_moment_6(x, moment_1, moment_2)
+
+        # Get the change rate (absolute)
+        d_moment_6 = np.abs(np.gradient(moment_6))
+
+        # Get threshold
+        threshold = self.threshold * np.nanmax(d_moment_6)
+
+        # Find the first index above threshold and adapt it to the search area
+        onset_index = self._first_positive_index(d_moment_6, threshold)
+        onset_index = onset_index*self.window_step + self.search_start
+
+        # Short waveform
+        out = x[onset_index:onset_index+self.out_length].astype(int)
+
+        # Signal to noise ratio picking
+        if self.SNR:
+            pass # TODO: finish the SNR picking
+
+
+        return onset_index, out
+
+
 if __name__ == 'main':
     print('This is not the main function! hehe')

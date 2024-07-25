@@ -2,7 +2,8 @@ src/clustering_module.py
 src/GPU_cross_correlation.py
 src/ivi_trace.py
 
-\models
-\data
-\images_new
+/*/__pycache__
+/models
+/data
+/images_new
 *.xlsx
