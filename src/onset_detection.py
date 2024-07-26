@@ -100,7 +100,7 @@ def onset_detection_fun(signal_ar, #save=False,
 
 
 class OnsetDetection():
-    def __init__(self, window_length=500, out_length=625, window_step=5, start_search=None, end_search=None, threshold=0.1, SNR=False, energy_gap=None) -> None:
+    def __init__(self, window_length=500, out_length=625, window_step=5, start_search=None, end_search=None, threshold=0.1, SNR=False, energy_gap=None, downsampling = 1) -> None:
         
         self.out_length = out_length
         self.window_length = window_length
@@ -110,6 +110,8 @@ class OnsetDetection():
         self.window_step = window_step
         self.search_start = start_search
         self.search_end = end_search
+
+        self.downsampling = downsampling
         
         # Fill the params if not set
         if self.search_start is None:
@@ -217,7 +219,7 @@ class OnsetDetection():
             pass # TODO: finish the SNR picking
 
 
-        return onset_index, out
+        return onset_index, out[::self.downsampling]
 
 
 if __name__ == 'main':
